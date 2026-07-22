@@ -1,183 +1,115 @@
 #include "OrderBook.hpp"
 #include <algorithm>
-
+#include <limits>
 namespace obook {
 
     std::vector<Trade> OrderBook::match(Order& incoming) {
         std::vector<Trade> newTrades;
+        if (incoming.side == Side::Buy) {
+            while (incoming.quantity > 0 && !_asks.empty()) {
+                auto it = _asks.begin();
+                if (incoming.priceBound < it->first) break;
 
-        if(incoming.type == OrderType::Limit){
-            if (incoming.side == Side::Buy) {
-                while (incoming.quantity > 0 && !_asks.empty()) {
-                    auto it = _asks.begin();
-                    if (incoming.price < it->first) break;
+                auto& queue = it->second;
+                while (incoming.quantity > 0 && !queue.empty()) {
+                    Order& resting = queue.front();
+                    int fillQty = std::min(incoming.quantity, resting.quantity);
 
-                    auto& queue = it->second;
-                    while (incoming.quantity > 0 && !queue.empty()) {
-                        Order& resting = queue.front();
-                        int fillQty = std::min(incoming.quantity, resting.quantity);
+                    Trade t;
+                    t.tradeId      = _nextTradeId;
+                    t.buyOrderId   = incoming.id;
+                    t.sellOrderId  = resting.id;
+                    t.price        = resting.priceBound;
+                    t.quantity     = fillQty;
+                    t.timestamp    = Order::now();
+                    newTrades.push_back(t);
+                    _trades.push_back(t);
+                    _nextTradeId++;
 
-                        Trade t;
-                        t.tradeId      = _nextTradeId;
-                        t.buyOrderId   = incoming.id;
-                        t.sellOrderId  = resting.id;
-                        t.price        = resting.price;
-                        t.quantity     = fillQty;
-                        t.timestamp    = Order::now();
-                        newTrades.push_back(t);
-                        _trades.push_back(t);
-                        _nextTradeId++;
+                    incoming.quantity -= fillQty;
+                    resting.quantity  -= fillQty;
 
-                        incoming.quantity -= fillQty;
-                        resting.quantity  -= fillQty;
-
-                        if (resting.quantity == 0) {
-                            _orderIndex.erase(resting.id);
-                            queue.pop_front();
-                        }
+                    if (resting.quantity == 0) {
+                        _orderIndex.erase(resting.id);
+                        queue.pop_front();
                     }
-                    if (queue.empty()) _asks.erase(it);
                 }
-            } else {
-                while (incoming.quantity > 0 && !_bids.empty()) {
-                    auto rit = _bids.rbegin();
-                    if (incoming.price > rit->first) break;
-
-                    auto& queue = rit->second;
-                    while (incoming.quantity > 0 && !queue.empty()) {
-                        Order& resting = queue.front();
-                        int fillQty = std::min(incoming.quantity, resting.quantity);
-
-                        Trade t;
-                        t.tradeId      = _nextTradeId;
-                        t.buyOrderId   = resting.id;
-                        t.sellOrderId  = incoming.id;
-                        t.price        = resting.price;
-                        t.quantity     = fillQty;
-                        t.timestamp    = Order::now();
-                        newTrades.push_back(t);
-                        _trades.push_back(t);
-                        _nextTradeId++;
-
-                        incoming.quantity -= fillQty;
-                        resting.quantity  -= fillQty;
-
-                        if (resting.quantity == 0) {
-                            _orderIndex.erase(resting.id);
-                            queue.pop_front();
-                        }
-                    }
-                    if (queue.empty()) _bids.erase(std::prev(_bids.end()));
-                }
+                if (queue.empty()) _asks.erase(it);
             }
-
-            return newTrades;
         } else {
-            if (incoming.side == Side::Buy) {
-                while (incoming.quantity > 0 && !_asks.empty()) {
-                    auto it = _asks.begin();
-                    auto& queue = it->second;
-                    while (incoming.quantity > 0 && !queue.empty()) {
-                        Order& resting = queue.front();
-                        int fillQty = std::min(incoming.quantity, resting.quantity);
+            while (incoming.quantity > 0 && !_bids.empty()) {
+                auto rit = _bids.rbegin();
+                if (incoming.priceBound > rit->first) break;
 
-                        Trade t;
-                        t.tradeId      = _nextTradeId;
-                        t.buyOrderId   = incoming.id;
-                        t.sellOrderId  = resting.id;
-                        t.price        = resting.price;
-                        t.quantity     = fillQty;
-                        t.timestamp    = Order::now();
-                        newTrades.push_back(t);
-                        _trades.push_back(t);
-                        _nextTradeId++;
+                auto& queue = rit->second;
+                while (incoming.quantity > 0 && !queue.empty()) {
+                    Order& resting = queue.front();
+                    int fillQty = std::min(incoming.quantity, resting.quantity);
 
-                        incoming.quantity -= fillQty;
-                        resting.quantity  -= fillQty;
+                    Trade t;
+                    t.tradeId      = _nextTradeId;
+                    t.buyOrderId   = resting.id;
+                    t.sellOrderId  = incoming.id;
+                    t.price        = resting.priceBound;
+                    t.quantity     = fillQty;
+                    t.timestamp    = Order::now();
+                    newTrades.push_back(t);
+                    _trades.push_back(t);
+                    _nextTradeId++;
 
-                        if (resting.quantity == 0) {
-                            _orderIndex.erase(resting.id);
-                            queue.pop_front();
-                        }
+                    incoming.quantity -= fillQty;
+                    resting.quantity  -= fillQty;
+
+                    if (resting.quantity == 0) {
+                        _orderIndex.erase(resting.id);
+                        queue.pop_front();
                     }
-                    if (queue.empty()) _asks.erase(it);
                 }
-            } else {
-                while (incoming.quantity > 0 && !_bids.empty()) {
-                    auto rit = _bids.rbegin();
-                    auto& queue = rit->second;
-                    while (incoming.quantity > 0 && !queue.empty()) {
-                        Order& resting = queue.front();
-                        int fillQty = std::min(incoming.quantity, resting.quantity);
-
-                        Trade t;
-                        t.tradeId      = _nextTradeId;
-                        t.buyOrderId   = resting.id;
-                        t.sellOrderId  = incoming.id;
-                        t.price        = resting.price;
-                        t.quantity     = fillQty;
-                        t.timestamp    = Order::now();
-                        newTrades.push_back(t);
-                        _trades.push_back(t);
-                        _nextTradeId++;
-
-                        incoming.quantity -= fillQty;
-                        resting.quantity  -= fillQty;
-
-                        if (resting.quantity == 0) {
-                            _orderIndex.erase(resting.id);
-                            queue.pop_front();
-                        }
-                    }
-                    if (queue.empty()) _bids.erase(std::prev(_bids.end()));
-                }
+                if (queue.empty()) _bids.erase(std::prev(_bids.end()));
             }
-            return newTrades;
         }
+        return newTrades;
     }
 
     std::vector<Trade> OrderBook::addOrder(Order order) {
+        if (order.type == OrderType::Market && order.priceBound < 0) {
+            order.priceBound = (order.side == Side::Buy) ? std::numeric_limits<int>::max() : 0;
+        }
         std::vector<Trade> trades = match(order);
 
         if (order.quantity > 0 && order.type == OrderType::Limit) {
-            _orderIndex[order.id] = {order.side, order.price};
-
+            std::list<Order>::iterator itr;
             if (order.side == Side::Buy) {
-                _bids[order.price].push_back(order);
+                _bids[order.priceBound].push_back(order);
+                itr = _bids[order.priceBound].end();
+                itr--;
             } else {
-                _asks[order.price].push_back(order);
+                _asks[order.priceBound].push_back(order);
+                itr = _asks[order.priceBound].end();
+                itr--;
             }
+            _orderIndex[order.id] = {order.side, order.priceBound, itr};
         }
 
         return trades;
     }
 
     bool OrderBook::cancelOrder(int orderId) {
-        auto it = _orderIndex.find(orderId);
-        if (it == _orderIndex.end()) return false;
+    auto it = _orderIndex.find(orderId);
+    if (it == _orderIndex.end()) return false;
 
-        Side side  = it->second.side;
-        int  price = it->second.price;
+    OrderLocation loc = it->second;
+    auto& book = (loc.side == Side::Buy) ? _bids : _asks;
 
-        auto& book  = (side == Side::Buy) ? _bids : _asks;
-        auto  lvlIt = book.find(price);
-        if (lvlIt == book.end()) return false;
-
-        auto& queue = lvlIt->second;
-        auto  pos   = std::find_if(queue.begin(), queue.end(),
-                        [orderId](const Order& o) { return o.id == orderId; });
-
-        if (pos == queue.end()) return false;
-
-        queue.erase(pos);
-
-        if (queue.empty()) {
-            book.erase(lvlIt);
-        }
-
-        _orderIndex.erase(it);
-        return true;
+    auto orderPriceList = book.find(loc.price); 
+    orderPriceList->second.erase(loc.itr);
+    if (orderPriceList->second.empty()) {
+        book.erase(orderPriceList);
     }
+
+    _orderIndex.erase(it);
+    return true;
+}
 
     std::vector<PriceLevel> OrderBook::getBids(int n) const {
         std::vector<PriceLevel> result;

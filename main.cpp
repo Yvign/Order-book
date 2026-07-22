@@ -144,8 +144,8 @@ int main() {
             {8,  Side::Sell, 109,  6, OrderType::Limit},
             {9,  Side::Buy,  104, 18, OrderType::Limit},   
             {10, Side::Sell,  98, 22, OrderType::Limit}, 
-            {11, Side::Buy,    0, 10, OrderType::Market},  
-            {12, Side::Sell,   0,  8, OrderType::Market},  
+            {11, Side::Buy,    -1, 10, OrderType::Market},  
+            {12, Side::Sell,   -1,  8, OrderType::Market},  
         };
 
         for (const auto& o : orders) {

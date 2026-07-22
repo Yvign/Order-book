@@ -12,7 +12,7 @@ namespace obook {
     struct Order {
         int         id;
         Side        side;
-        int         price;      
+        int         priceBound;      
         int         quantity;
         int64_t     timestamp;
         OrderType   type;
