@@ -21,7 +21,7 @@ overlapping orders. This project implements a deterministic matching engine that
 ## 📷 Screenshot
 
 <!-- Add your screenshot here, e.g.: -->
-<!-- ![obook terminal UI](docs/screenshot.png) -->
+![obook terminal UI](screenshots/Pasted%20image.png)
 
 ---
 
